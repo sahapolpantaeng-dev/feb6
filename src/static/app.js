@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 ${details.participants
                   .map(
                     (email) =>
-                      `<li><span class="participant-email">${email}</span><button class="delete-btn" data-activity="${name}" data-email="${email}">❌</button></li>`
+                      `<li><span class="participant-email">${email}</span><button class="delete-btn" data-activity="${name}" data-email="${email}" aria-label="Remove ${email} from ${name}">❌</button></li>`
                   )
                   .join("")}
               </ul>
@@ -164,13 +164,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function showMessage(message, type) {
     // Create a temporary message div
     const tempMessage = document.createElement("div");
-    tempMessage.className = `message ${type}`;
+    tempMessage.className = `message ${type} floating-message`;
     tempMessage.textContent = message;
-    tempMessage.style.position = "fixed";
-    tempMessage.style.top = "20px";
-    tempMessage.style.right = "20px";
-    tempMessage.style.zIndex = "10000";
-    tempMessage.style.maxWidth = "400px";
     document.body.appendChild(tempMessage);
 
     // Remove after 5 seconds

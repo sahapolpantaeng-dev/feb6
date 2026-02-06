@@ -205,6 +205,15 @@ button[type="submit"] {
   font-weight: 500;
 }
 
+.floating-message {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+  max-width: 400px;
+  margin-top: 0;
+}
+
 .success {
   background-color: #e8f5e9;
   color: #2e7d32;
