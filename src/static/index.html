@@ -10,7 +10,37 @@
     <header>
       <h1>Mergington High School</h1>
       <h2>Extracurricular Activities</h2>
+      <div class="auth-controls">
+        <button id="login-btn" class="auth-btn">
+          <span class="user-icon">👤</span> Login
+        </button>
+        <div id="user-info" class="user-info hidden">
+          <span class="user-icon">👤</span>
+          <span id="username-display"></span>
+          <button id="logout-btn" class="logout-btn">Logout</button>
+        </div>
+      </div>
     </header>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal hidden">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3>Teacher Login</h3>
+        <form id="login-form">
+          <div class="form-group">
+            <label for="username">Username:</label>
+            <input type="text" id="username" required />
+          </div>
+          <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" required />
+          </div>
+          <button type="submit">Login</button>
+        </form>
+        <div id="login-error" class="error hidden"></div>
+      </div>
+    </div>
 
     <main>
       <section id="activities-container">
@@ -21,8 +51,9 @@
         </div>
       </section>
 
-      <section id="signup-container">
+      <section id="signup-container" class="auth-required hidden">
         <h3>Sign Up for an Activity</h3>
+        <p class="auth-notice">Teachers only: Please log in to register students</p>
         <form id="signup-form">
           <div class="form-group">
             <label for="email">Student Email:</label>
