@@ -1,8 +1,11 @@
 document.addEventListener("DOMContentLoaded", () => {
   const activitiesList = document.getElementById("activities-list");
-  const activitySelect = document.getElementById("activity");
-  const signupForm = document.getElementById("signup-form");
-  const messageDiv = document.getElementById("message");
+  const registrationForm = document.getElementById("registration-form");
+  const modal = document.getElementById("registration-modal");
+  const closeModalBtn = document.querySelector(".close-modal");
+  const modalActivityName = document.getElementById("modal-activity-name");
+  const modalMessage = document.getElementById("modal-message");
+  let currentActivity = null;
 
   // Function to fetch activities from API
   async function fetchActivities() {
@@ -45,20 +48,20 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="participants-container">
             ${participantsHTML}
           </div>
+          <button class="register-btn" data-activity="${name}">Register Student</button>
         `;
 
         activitiesList.appendChild(activityCard);
-
-        // Add option to select dropdown
-        const option = document.createElement("option");
-        option.value = name;
-        option.textContent = name;
-        activitySelect.appendChild(option);
       });
 
       // Add event listeners to delete buttons
       document.querySelectorAll(".delete-btn").forEach((button) => {
         button.addEventListener("click", handleUnregister);
+      });
+
+      // Add event listeners to register buttons
+      document.querySelectorAll(".register-btn").forEach((button) => {
+        button.addEventListener("click", openRegistrationModal);
       });
     } catch (error) {
       activitiesList.innerHTML =
@@ -86,41 +89,49 @@ document.addEventListener("DOMContentLoaded", () => {
       const result = await response.json();
 
       if (response.ok) {
-        messageDiv.textContent = result.message;
-        messageDiv.className = "success";
-
+        showMessage(result.message, "success");
         // Refresh activities list to show updated participants
         fetchActivities();
       } else {
-        messageDiv.textContent = result.detail || "An error occurred";
-        messageDiv.className = "error";
+        showMessage(result.detail || "An error occurred", "error");
       }
-
-      messageDiv.classList.remove("hidden");
-
-      // Hide message after 5 seconds
-      setTimeout(() => {
-        messageDiv.classList.add("hidden");
-      }, 5000);
     } catch (error) {
-      messageDiv.textContent = "Failed to unregister. Please try again.";
-      messageDiv.className = "error";
-      messageDiv.classList.remove("hidden");
+      showMessage("Failed to unregister. Please try again.", "error");
       console.error("Error unregistering:", error);
     }
   }
 
+  // Open registration modal
+  function openRegistrationModal(event) {
+    const button = event.target;
+    currentActivity = button.getAttribute("data-activity");
+    modalActivityName.textContent = `Activity: ${currentActivity}`;
+    modalMessage.classList.add("hidden");
+    document.getElementById("student-email").value = "";
+    modal.classList.remove("hidden");
+  }
+
+  // Close registration modal
+  function closeRegistrationModal() {
+    modal.classList.add("hidden");
+    currentActivity = null;
+  }
+
   // Handle form submission
-  signupForm.addEventListener("submit", async (event) => {
+  registrationForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const email = document.getElementById("email").value;
-    const activity = document.getElementById("activity").value;
+    const email = document.getElementById("student-email").value;
+
+    if (!currentActivity) {
+      showModalMessage("Please select an activity", "error");
+      return;
+    }
 
     try {
       const response = await fetch(
         `/activities/${encodeURIComponent(
-          activity
+          currentActivity
         )}/signup?email=${encodeURIComponent(email)}`,
         {
           method: "POST",
@@ -130,28 +141,63 @@ document.addEventListener("DOMContentLoaded", () => {
       const result = await response.json();
 
       if (response.ok) {
-        messageDiv.textContent = result.message;
-        messageDiv.className = "success";
-        signupForm.reset();
+        showModalMessage(result.message, "success");
+        registrationForm.reset();
 
         // Refresh activities list to show updated participants
         fetchActivities();
+
+        // Close modal after a short delay
+        setTimeout(() => {
+          closeRegistrationModal();
+        }, 1500);
       } else {
-        messageDiv.textContent = result.detail || "An error occurred";
-        messageDiv.className = "error";
+        showModalMessage(result.detail || "An error occurred", "error");
       }
-
-      messageDiv.classList.remove("hidden");
-
-      // Hide message after 5 seconds
-      setTimeout(() => {
-        messageDiv.classList.add("hidden");
-      }, 5000);
     } catch (error) {
-      messageDiv.textContent = "Failed to sign up. Please try again.";
-      messageDiv.className = "error";
-      messageDiv.classList.remove("hidden");
-      console.error("Error signing up:", error);
+      showModalMessage("Failed to register. Please try again.", "error");
+      console.error("Error registering:", error);
+    }
+  });
+
+  // Show message helper
+  function showMessage(message, type) {
+    // Create a temporary message div
+    const tempMessage = document.createElement("div");
+    tempMessage.className = `message ${type}`;
+    tempMessage.textContent = message;
+    tempMessage.style.position = "fixed";
+    tempMessage.style.top = "20px";
+    tempMessage.style.right = "20px";
+    tempMessage.style.zIndex = "10000";
+    tempMessage.style.maxWidth = "400px";
+    document.body.appendChild(tempMessage);
+
+    // Remove after 5 seconds
+    setTimeout(() => {
+      tempMessage.remove();
+    }, 5000);
+  }
+
+  // Show modal message helper
+  function showModalMessage(message, type) {
+    modalMessage.textContent = message;
+    modalMessage.className = `message ${type}`;
+    modalMessage.classList.remove("hidden");
+
+    // Hide message after 5 seconds
+    setTimeout(() => {
+      modalMessage.classList.add("hidden");
+    }, 5000);
+  }
+
+  // Close modal when clicking X
+  closeModalBtn.addEventListener("click", closeRegistrationModal);
+
+  // Close modal when clicking outside of it
+  window.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      closeRegistrationModal();
     }
   });
 
