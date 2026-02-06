@@ -5,14 +5,36 @@ A super simple FastAPI application that allows students to view and sign up
 for extracurricular activities at Mergington High School.
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
+from fastapi.middleware.cors import CORSMiddleware
 import os
+import json
+import secrets
 from pathlib import Path
+from typing import Optional
 
 app = FastAPI(title="Mergington High School API",
               description="API for viewing and signing up for extracurricular activities")
+
+# Add CORS middleware to handle credentials
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Simple in-memory session store
+sessions = {}
+
+# Load teacher credentials from JSON file
+def load_teachers():
+    teachers_file = Path(__file__).parent / "teachers.json"
+    with open(teachers_file, 'r') as f:
+        return json.load(f)["teachers"]
 
 # Mount the static files directory
 current_dir = Path(__file__).parent
@@ -88,9 +110,64 @@ def get_activities():
     return activities
 
 
+@app.post("/auth/login")
+def login(username: str, password: str, response: Response):
+    """Authenticate a teacher and create a session"""
+    teachers = load_teachers()
+    
+    # Check credentials
+    for teacher in teachers:
+        if teacher["username"] == username and teacher["password"] == password:
+            # Create session token
+            session_token = secrets.token_urlsafe(32)
+            sessions[session_token] = {"username": username}
+            
+            # Set cookie
+            response.set_cookie(
+                key="session_token",
+                value=session_token,
+                httponly=True,
+                max_age=3600 * 24  # 24 hours
+            )
+            return {"message": "Login successful", "username": username}
+    
+    raise HTTPException(status_code=401, detail="Invalid credentials")
+
+
+@app.post("/auth/logout")
+def logout(request: Request, response: Response):
+    """Logout and destroy session"""
+    session_token = request.cookies.get("session_token")
+    if session_token and session_token in sessions:
+        del sessions[session_token]
+    
+    response.delete_cookie("session_token")
+    return {"message": "Logged out successfully"}
+
+
+@app.get("/auth/status")
+def auth_status(request: Request):
+    """Check if user is authenticated"""
+    session_token = request.cookies.get("session_token")
+    if session_token and session_token in sessions:
+        return {"authenticated": True, "username": sessions[session_token]["username"]}
+    return {"authenticated": False}
+
+
+def require_auth(request: Request):
+    """Helper function to check authentication"""
+    session_token = request.cookies.get("session_token")
+    if not session_token or session_token not in sessions:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return sessions[session_token]
+
+
 @app.post("/activities/{activity_name}/signup")
-def signup_for_activity(activity_name: str, email: str):
-    """Sign up a student for an activity"""
+def signup_for_activity(activity_name: str, email: str, request: Request):
+    """Sign up a student for an activity (requires authentication)"""
+    # Require authentication
+    require_auth(request)
+    
     # Validate activity exists
     if activity_name not in activities:
         raise HTTPException(status_code=404, detail="Activity not found")
@@ -111,8 +188,11 @@ def signup_for_activity(activity_name: str, email: str):
 
 
 @app.delete("/activities/{activity_name}/unregister")
-def unregister_from_activity(activity_name: str, email: str):
-    """Unregister a student from an activity"""
+def unregister_from_activity(activity_name: str, email: str, request: Request):
+    """Unregister a student from an activity (requires authentication)"""
+    # Require authentication
+    require_auth(request)
+    
     # Validate activity exists
     if activity_name not in activities:
         raise HTTPException(status_code=404, detail="Activity not found")
